@@ -7,15 +7,16 @@ context.strokeRect(0, 0, canvas.width, canvas.height);
 var currentNode = 0;
 
 // constants
-var MAX_RADIUS = 20;
-var MAX_CHILDREN = 2;
-// note that MAX_DEPTH is actually the number of rows minus one in the tree
-var MAX_DEPTH = 3;
+var MAX_RADIUS = 10;
+var MAX_CHILDREN = 3;
+var MAX_DEPTH = 5; // note that MAX_DEPTH is actually the number of rows minus one in the tree
 
 // constructor for nodes
-function Node(number, radius, parent, numChild, children, depth) {
+function Node(number, radius, x, y, parent, numChild, children, depth) {
     this.number = number;
     this.radius = radius;
+    this.x = x;
+    this.y = y;
     this.parent = parent;
     this.numChild = numChild;
     this.children = children;
@@ -35,13 +36,7 @@ function makeTree(node) {
             numchild = 0;
         }
 
-        newNode = new Node ( currentNode++,      // number
-                             node.radius,        // radius
-                             node,               // parent
-                             numchild,           // numChild
-                             [],                 // children
-                             node.depth + 1      // depth
-                           );
+        newNode = new Node(currentNode++, node.radius, 0, 0, node, numchild, [], node.depth + 1);
 
         // add this new child to the parent's array
         node.children.push(newNode);
@@ -51,9 +46,8 @@ function makeTree(node) {
     }
 }
 
-// get an array of the arrays of nodes based on their depth (so the first
-// 0th row is just the root node, the 1st row is the nodes of depth 1,
-// etc.)
+// get an array of the arrays of nodes based on their depth (so the 0th row is just the root node,
+// the 1st row is the nodes of depth 1, etc.)
 function getQueues(node) {
     var list = [];
 
@@ -76,10 +70,9 @@ function getQueues(node) {
     return list;
 }
 
-/* actually draw the tree, with maximum width and height for the drawing:
- * we draw the tree horizontally, so nodes of the same depth are drawn on the
- * same row; we also try to center the tree in the middle of the drawing
- * window; all the nodes on one row have the same radius */
+/* actually draw the tree, with maximum width and height for the drawing: we draw the tree horizontally,
+ * so nodes of the same depth are drawn on the same row; we also try to center the tree in the middle
+ * of the drawing window; all the nodes on one row have the same radius */
 function drawTree(node, maxWidth, maxHeight) {
     // we actually only draw in a fraction of the drawing window
     var fullHeight = maxHeight * (3.0/4);
@@ -105,8 +98,7 @@ function drawTree(node, maxWidth, maxHeight) {
         var hspacing = numNodes == 1 ? 0 :
             (fullWidth - 2*rowRadius*numNodes) / (numNodes - 1);
 
-        // we need the length that these nodes take up to find how much
-        // we need to offset to row to center it
+        // we need the length that these nodes take up to find how much we need to offset to row to center it
         var rowLength = 2*numNodes*rowRadius + (numNodes - 1)*hspacing
         var centerOffset = 0.5*(maxWidth - rowLength);
 
@@ -114,17 +106,34 @@ function drawTree(node, maxWidth, maxHeight) {
 
         // actually draw the nodes
         for (var nodes = 0; nodes < queues[rows].length; nodes++) {
-            var x = (2*nodes + 1)*rowRadius + nodes*hspacing;
-            context.beginPath();
-            context.arc(x + centerOffset, y, rowRadius, 0, 2*Math.PI, false);
+            queues[rows][nodes].x = (2*nodes + 1)*rowRadius + nodes*hspacing + centerOffset;
+            queues[rows][nodes].y = y;
 
-            // draw the number of the node in its center; canvas draws
-            // text from the bottom left corner, so we need to adjust the
+            context.beginPath();
+            context.arc(queues[rows][nodes].x, queues[rows][nodes].y, rowRadius, 0, 2*Math.PI, false);
+
+            // draw the number of the node in its center; canvas draws text from the bottom left corner, so we need to adjust the
             // positioning to put it in the center
             context.font = String(2*rowRadius * (3.0/4)) + 'px serif';
             context.textAlign = 'center';
             context.fillText(queues[rows][nodes].number,
-                x + centerOffset, y + .4*rowRadius);
+                queues[rows][nodes].x, queues[rows][nodes].y + .4*rowRadius);
+
+            // connect the node to its parent via a line
+            if (queues[rows][nodes].parent != null) {
+                var factor = 1;
+                if (queues[rows][nodes].x < queues[rows][nodes].parent.x) {
+                    factor = -1;
+                }
+
+                // basically just draw the line between the centers of the nodes and erase the part inside the circle, so the line just touches the
+                // the circumfrences of the nodes; the math is not bad
+                var angle = Math.atan(Math.abs((queues[rows][nodes].y - queues[rows][nodes].parent.y) / (queues[rows][nodes].x - queues[rows][nodes].parent.x)));
+                context.moveTo(queues[rows][nodes].parent.x + factor * queues[rows][nodes].parent.radius * Math.cos(angle),
+                               queues[rows][nodes].parent.y + queues[rows][nodes].parent.radius * Math.sin(angle));
+                context.lineTo(queues[rows][nodes].x - factor * queues[rows][nodes].radius * Math.cos(angle),
+                               queues[rows][nodes].y - queues[rows][nodes].radius * Math.sin(angle));
+            }
 
             context.stroke();
         }
@@ -133,6 +142,6 @@ function drawTree(node, maxWidth, maxHeight) {
     }
 }
 
-var root = new Node(currentNode++, MAX_RADIUS, null, MAX_CHILDREN, [], 0);
+var root = new Node(currentNode++, MAX_RADIUS, 0, 0, null, MAX_CHILDREN, [], 0);
 makeTree(root);
 drawTree(root, canvas.width, canvas.height);
