@@ -73,11 +73,11 @@ function getQueues(node) {
 /* actually draw the tree, with maximum width and height for the drawing: we draw the tree horizontally,
  * so nodes of the same depth are drawn on the same row; we also try to center the tree in the middle
  * of the drawing window; all the nodes on one row have the same radius */
-function drawTree(node, maxWidth, maxHeight) {
+function drawTree(node, maxWidth, maxHeight, shift) {
     // we actually only draw in a fraction of the drawing window
     var fullHeight = maxHeight * (3.0/4);
 
-    var y = 0;                          // y-position of this row
+    var y = (maxHeight - fullHeight)/2;                          // y-position of this row
     var rootRadius = node.radius;
 
     // the rows are evenly spaced from each other; this is the spacing factor
@@ -106,7 +106,7 @@ function drawTree(node, maxWidth, maxHeight) {
 
         // actually draw the nodes
         for (var nodes = 0; nodes < queues[rows].length; nodes++) {
-            queues[rows][nodes].x = (2*nodes + 1)*rowRadius + nodes*hspacing + centerOffset;
+            queues[rows][nodes].x = (2*nodes + 1)*rowRadius + nodes*hspacing + centerOffset + shift;
             queues[rows][nodes].y = y;
 
             context.beginPath();
@@ -142,6 +142,18 @@ function drawTree(node, maxWidth, maxHeight) {
     }
 }
 
-var root = new Node(currentNode++, MAX_RADIUS, 0, 0, null, MAX_CHILDREN, [], 0);
-makeTree(root);
-drawTree(root, canvas.width, canvas.height);
+function copyTree(node, copyNode) {
+    for (var i = 0; i < node.numChild; i++) {
+        var copyChild = copyNode.children[i];
+        node.children.push(new Node(copyChild.number, copyChild.radius, copyChild.x, copyChild.y, node, copyChild.numChild, [], copyChild.depth));
+        copyTree(node.children[i], copyNode.children[i]);
+    }
+}
+
+var dfsroot = new Node(currentNode++, MAX_RADIUS, 0, 0, null, MAX_CHILDREN, [], 0);
+makeTree(dfsroot);
+drawTree(dfsroot, canvas.width/2, canvas.height, 0);
+
+var bfsroot = new Node(dfsroot.number, dfsroot.radius, dfsroot.x, dfsroot.y, null, dfsroot.numChild, [], 0);
+copyTree(bfsroot, dfsroot);
+drawTree(bfsroot, canvas.width/2, canvas.height, canvas.width/2);
