@@ -10,6 +10,8 @@ var currentNode = 0;
 var MAX_RADIUS = 10;
 var MAX_CHILDREN = 3;
 var MAX_DEPTH = 5; // note that MAX_DEPTH is actually the number of rows minus one in the tree
+var MIN_NODES = 10;
+var MAX_NODES = 30;
 
 // constructor for nodes
 function Node(number, radius, x, y, parent, numChild, children, depth) {
@@ -77,7 +79,7 @@ function drawTree(node, maxWidth, maxHeight, shift) {
     // we actually only draw in a fraction of the drawing window
     var fullHeight = maxHeight * (3.0/4);
 
-    var y = (maxHeight - fullHeight)/2;                          // y-position of this row
+    var y = 0;                          // y-position of this row
     var rootRadius = node.radius;
 
     // the rows are evenly spaced from each other; this is the spacing factor
@@ -142,6 +144,7 @@ function drawTree(node, maxWidth, maxHeight, shift) {
     }
 }
 
+// copy the tree found in copyNode into node by value, so node can be altered without altering copyNode
 function copyTree(node, copyNode) {
     for (var i = 0; i < node.numChild; i++) {
         var copyChild = copyNode.children[i];
@@ -150,10 +153,44 @@ function copyTree(node, copyNode) {
     }
 }
 
-var dfsroot = new Node(currentNode++, MAX_RADIUS, 0, 0, null, MAX_CHILDREN, [], 0);
-makeTree(dfsroot);
+// find the order in which DFS searches the nodes
+function dfs(root, nodes) {
+    nodes.push(root);
+    for (var i = 0; i < root.numChild; i++) {
+        dfs(root.children[i], nodes);
+    }
+}
+
+// find the order in which BFS searches the nodes
+function bfs(root, nodes) {
+    var queue = [ root ];
+    while (queue.length > 0) {
+        current = queue.shift();
+        nodes.push(current);
+
+        for (var i = 0; i < current.numChild; i++) {
+            queue.push(current.children[i]);
+        }
+    }
+}
+
+// make sure the tree has a certain number of nodes for the asthetic
+var dfsroot = null;
+do {
+    //if (dfsroot != null) { console.log("Rejected tree with " + currentNode + " nodes"); }
+
+    currentNode = 0;
+    dfsroot = new Node(currentNode++, MAX_RADIUS, 0, 0, null, MAX_CHILDREN, [], 0);
+    makeTree(dfsroot);
+
+} while (currentNode < MIN_NODES || currentNode > MAX_NODES)
+
 drawTree(dfsroot, canvas.width/2, canvas.height, 0);
 
 var bfsroot = new Node(dfsroot.number, dfsroot.radius, dfsroot.x, dfsroot.y, null, dfsroot.numChild, [], 0);
 copyTree(bfsroot, dfsroot);
 drawTree(bfsroot, canvas.width/2, canvas.height, canvas.width/2);
+
+var dfslist = [], bfslist = [];
+dfs(dfsroot, dfslist);
+bfs(bfsroot, bfslist);
